@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-class ReadChapterScreen extends StatefulWidget {
+class SimpleReadChapterScreen extends StatefulWidget {
   final Map<String, dynamic> chapter;
   final String bookTitle;
 
-  const ReadChapterScreen({required this.chapter, required this.bookTitle, Key? key}) : super(key: key);
+  const SimpleReadChapterScreen({required this.chapter, required this.bookTitle, Key? key}) : super(key: key);
 
   @override
-  _ReadChapterScreenState createState() => _ReadChapterScreenState();
+  _SimpleReadChapterScreenState createState() => _SimpleReadChapterScreenState();
 }
 
-class _ReadChapterScreenState extends State<ReadChapterScreen> {
+class _SimpleReadChapterScreenState extends State<SimpleReadChapterScreen> {
   String chapterContent = '';
   bool isLoading = true;
 
@@ -29,7 +29,7 @@ class _ReadChapterScreenState extends State<ReadChapterScreen> {
       final response = await http.get(Uri.parse(contentUrl));
       if (response.statusCode == 200) {
         setState(() {
-          chapterContent = response.body; // plain text from .txt file
+          chapterContent = response.body;
           isLoading = false;
         });
       } else {
@@ -73,14 +73,10 @@ class _ReadChapterScreenState extends State<ReadChapterScreen> {
                         color: Colors.brown,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     Text(
                       chapterContent,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        height: 1.5,
-                        color: Colors.brown,
-                      ),
+                      style: const TextStyle(fontSize: 16, height: 1.6),
                     ),
                   ],
                 ),
