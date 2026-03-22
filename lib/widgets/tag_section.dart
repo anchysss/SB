@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 
 class TagSection extends StatelessWidget {
-  final List<Map<String, dynamic>> tags = [
+  static const List<Map<String, dynamic>> tags = [
     {"label": "Alpha Male", "color": pastelPeach},
     {"label": "Bad Boy", "color": pastelMauve},
     {"label": "Bad Girl", "color": pastelLavender},
@@ -25,10 +25,12 @@ class TagSection extends StatelessWidget {
     {"label": "Roommates", "color": pastelPeach},
   ];
 
+  const TagSection({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 100, // Visina tagova približno kao kod žanrova
+      height: 100,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -42,7 +44,7 @@ class TagSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: tag['color'],
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: Colors.black12,
                   blurRadius: 4,
