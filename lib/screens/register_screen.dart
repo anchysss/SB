@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // Google Sign-In
-import 'home_screen.dart'; // Import HomeScreen
-import 'login_screen.dart'; // Import LoginScreen
-import 'package:flutter_signin_button/flutter_signin_button.dart'; // Google Sign-In button
+import 'package:google_sign_in/google_sign_in.dart';
+import 'home_screen.dart';
+import 'login_screen.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -19,7 +19,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Save user to AWS Lambda function
   Future<void> saveUserToDatabase(User user) async {
     Map<String, dynamic> userData = {
       'uid': user.uid,
@@ -28,7 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'photoURL': user.photoURL ?? '',
     };
 
-    final String apiUrl = 'https://poiw4thrb5.execute-api.eu-north-1.amazonaws.com/prod/saveUser'; // API endpoint
+    const String apiUrl = 'https://poiw4thrb5.execute-api.eu-north-1.amazonaws.com/prod/saveUser';
 
     try {
       final response = await http.post(
@@ -47,11 +46,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // Sign up with Google using google_sign_in package
   Future<void> signUpWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;  // User canceled the login
+      if (googleUser == null) return;
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
@@ -59,13 +57,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         idToken: googleAuth.idToken,
       );
 
-      // Use signInWithCredential for Google registration (sign up)
-      final UserCredential userCredential = await _auth.signInWithCredential(credential); // Correct method for registration
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
 
       if (user != null) {
-        // Save new user to the database if not already present
         await saveUserToDatabase(user);
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -76,7 +73,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // Register with email and password
   Future<void> registerWithEmail() async {
     try {
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
@@ -84,10 +80,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
       );
       final User? user = userCredential.user;
-      
+
       if (user != null) {
-        // Save new user to the database
         await saveUserToDatabase(user);
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -95,6 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       print('Registration failed: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration failed. Please try again.')),
       );
@@ -104,7 +101,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF4B3C2A), // Dark gold background
+      backgroundColor: Color(0xFF4B3C2A),
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -112,24 +109,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
                 Image.asset('assets/logo.png', height: 120),
 
                 SizedBox(height: 40),
 
-                // Signup with Google Button (RegisterScreen)
                 SignInButton(
                   Buttons.Google,
                   onPressed: signUpWithGoogle,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  text: "Sign up with Google",  // Correct text for RegisterScreen
+                  text: "Sign up with Google",
                 ),
 
                 SizedBox(height: 20),
 
-                // Email/Password Register
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
@@ -172,19 +166,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    backgroundColor: Color(0xFF9C7F46), // Golden color
+                    backgroundColor: Color(0xFF9C7F46),
                   ),
                   child: Text('Sign up with Email', style: TextStyle(fontSize: 18, color: Colors.white)),
                 ),
 
                 SizedBox(height: 20),
 
-                // Already have an account? Login link
                 GestureDetector(
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => LoginScreen()),  // Navigating to LoginScreen
+                      MaterialPageRoute(builder: (context) => LoginScreen()),
                     );
                   },
                   child: Text(
