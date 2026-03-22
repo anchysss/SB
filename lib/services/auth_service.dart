@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'google_web_login_service.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
+  // ── Email sign-up ─────────────────────────────────────────────
   Future<void> signUpWithEmail({
     required String email,
     required String password,
@@ -17,171 +18,150 @@ class AuthService {
     required BuildContext context,
   }) async {
     try {
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      final cred = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
-      final user = userCredential.user;
-
+      final user = cred.user;
       if (user != null) {
-        await _db.collection('Users').doc(user.uid).set({
-          'uid': user.uid,
-          'email': user.email,
-          'name': name,
-          'created_at': FieldValue.serverTimestamp(),
-          'steamy_clicks': 0,
-          'progress': {},
-          'purchases': [],
-          'preferred_genres': [],
-        });
-
-        Navigator.pushReplacementNamed(context, '/home');
+        await user.updateDisplayName(name.trim());
+        await _saveUserToFirestore(user, name: name.trim());
+        if (context.mounted) Navigator.pushReplacementNamed(context, '/home');
       }
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message}')),
-      );
+      if (context.mounted) _showError(context, e.message ?? 'Sign-up failed.');
     }
   }
 
+  // ── Email sign-in ─────────────────────────────────────────────
   Future<void> signInWithEmail({
     required String email,
     required String password,
     required BuildContext context,
   }) async {
     try {
-      final userCredential = await _auth.signInWithEmailAndPassword(
+      final cred = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
-
-      if (userCredential.user != null) {
+      if (cred.user != null && context.mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1207),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Text(
-              'Login Failed',
-              style: TextStyle(
-                color: Color(0xFFFFD700),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: const Text(
-              "Invalid email or password.\nPlease check your credentials or sign up to join the story.",
-              style: TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/register');
-                },
-                child: const Text(
-                  "Sign Up",
-                  style: TextStyle(
-                    color: Color(0xFFF0CFC2),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+      if (!context.mounted) return;
+      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        _showError(context, 'Invalid email or password. Please try again.');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.message}')),
-        );
+        _showError(context, e.message ?? 'Sign-in failed.');
       }
     }
   }
 
+  // ── Google sign-in ────────────────────────────────────────────
   Future<void> signInWithGoogle(BuildContext context) async {
-    if (kIsWeb) return;
-
+    if (kIsWeb) return; // web uses GIS — handled separately
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return;
 
       final googleAuth = await googleUser.authentication;
-
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
-      final user = userCredential.user;
-
+      final userCred = await _auth.signInWithCredential(credential);
+      final user = userCred.user;
       if (user != null) {
-        final doc = await _db.collection('Users').doc(user.uid).get();
-
-        if (!doc.exists) {
-          await _db.collection('Users').doc(user.uid).set({
-            'uid': user.uid,
-            'email': user.email,
-            'name': user.displayName ?? '',
-            'created_at': FieldValue.serverTimestamp(),
-            'steamy_clicks': 0,
-            'progress': {},
-            'purchases': [],
-            'preferred_genres': [],
-          });
-        }
-
-        Navigator.pushReplacementNamed(context, '/home');
+        await _saveUserToFirestore(user);
+        if (context.mounted) Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
-      print('❌ Google Sign-In Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      if (context.mounted) _showError(context, 'Google Sign-In failed. Please try again.');
     }
   }
 
-  Future<void> signInWithGoogleIdToken(String idToken, BuildContext context) async {
+  // ── Apple sign-in ─────────────────────────────────────────────
+  Future<void> signInWithApple(BuildContext context) async {
     try {
-      final credential = GoogleAuthProvider.credential(idToken: idToken);
-      final userCredential = await _auth.signInWithCredential(credential);
-      final user = userCredential.user;
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final userCred = await _auth.signInWithCredential(oauthCredential);
+      final user = userCred.user;
 
       if (user != null) {
-        final doc = await _db.collection('Users').doc(user.uid).get();
-
-        if (!doc.exists) {
-          await _db.collection('Users').doc(user.uid).set({
-            'uid': user.uid,
-            'email': user.email,
-            'name': user.displayName ?? '',
-            'created_at': FieldValue.serverTimestamp(),
-            'steamy_clicks': 0,
-            'progress': {},
-            'purchases': [],
-            'preferred_genres': [],
-          });
-        }
-
-        Navigator.pushReplacementNamed(context, '/home');
+        final name = [appleCredential.givenName, appleCredential.familyName]
+            .where((p) => p != null && p.isNotEmpty)
+            .join(' ');
+        await _saveUserToFirestore(user, name: name.isNotEmpty ? name : null);
+        if (context.mounted) Navigator.pushReplacementNamed(context, '/home');
       }
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return;
+      if (context.mounted) _showError(context, 'Apple Sign-In failed: ${e.message}');
     } catch (e) {
-      print('❌ Error signing in with Google ID token: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In failed.')),
-      );
+      if (context.mounted) _showError(context, 'Apple Sign-In failed. Please try again.');
     }
   }
 
+  // ── Password reset ────────────────────────────────────────────
+  Future<void> resetPassword({
+    required String email,
+    required BuildContext context,
+  }) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reset link sent! Check your inbox.')),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (context.mounted) _showError(context, e.message ?? 'Could not send reset email.');
+    }
+  }
+
+  // ── Sign out ──────────────────────────────────────────────────
   Future<void> signOut() async {
     await _auth.signOut();
     await _googleSignIn.signOut();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+  Future<void> _saveUserToFirestore(User user, {String? name}) async {
+    final doc = await _db.collection('Users').doc(user.uid).get();
+    if (!doc.exists) {
+      await _db.collection('Users').doc(user.uid).set({
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'name': name ?? user.displayName ?? 'Reader',
+        'created_at': FieldValue.serverTimestamp(),
+        'steamy_clicks': 0,
+        'progress': {},
+        'purchases': [],
+        'preferred_genres': [],
+      });
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 }
