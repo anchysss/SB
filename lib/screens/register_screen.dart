@@ -1,195 +1,438 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'home_screen.dart';
-import 'login_screen.dart';
-import 'package:flutter_signin_button/flutter_signin_button.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../services/auth_service.dart';
+
+const _kBg    = Color(0xFF1A0E07);
+const _kCard  = Color(0xFF2D1F12);
+const _kInput = Color(0xFF3D2A18);
+const _kGold  = Color(0xFFFFD700);
+const _kRose  = Color(0xFFF4C2C2);
+const _kHint  = Color(0xFFAA9080);
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  _RegisterScreenState createState() => _RegisterScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _formKey      = GlobalKey<FormState>();
+  final _nameCtrl     = TextEditingController();
+  final _emailCtrl    = TextEditingController();
+  final _passCtrl     = TextEditingController();
+  final _confirmCtrl  = TextEditingController();
+  final _auth         = AuthService();
 
-  Future<void> saveUserToDatabase(User user) async {
-    Map<String, dynamic> userData = {
-      'uid': user.uid,
-      'email': user.email,
-      'displayName': user.displayName ?? 'No Name',
-      'photoURL': user.photoURL ?? '',
-    };
+  bool _passVisible    = false;
+  bool _confirmVisible = false;
+  bool _loading        = false;
 
-    const String apiUrl = 'https://poiw4thrb5.execute-api.eu-north-1.amazonaws.com/prod/saveUser';
+  bool get _showApple =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+       defaultTargetPlatform == TargetPlatform.macOS);
 
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(userData),
-      );
-
-      if (response.statusCode == 200) {
-        print("User saved successfully in AWS!");
-      } else {
-        print("Failed to save user: ${response.body}");
-      }
-    } catch (e) {
-      print("Error saving user: $e");
-    }
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
   }
 
-  Future<void> signUpWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      final User? user = userCredential.user;
-
-      if (user != null) {
-        await saveUserToDatabase(user);
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen()),
-        );
-      }
-    } catch (e) {
-      print('Signup with Google failed: $e');
-    }
-  }
-
-  Future<void> registerWithEmail() async {
-    try {
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      final User? user = userCredential.user;
-
-      if (user != null) {
-        await saveUserToDatabase(user);
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen()),
-        );
-      }
-    } catch (e) {
-      print('Registration failed: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registration failed. Please try again.')),
-      );
-    }
+  Future<void> _run(Future<void> Function() action) async {
+    setState(() => _loading = true);
+    await action();
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF4B3C2A),
+      backgroundColor: _kBg,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset('assets/logo.png', height: 120),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
 
-                SizedBox(height: 40),
+              // ── Back button ──────────────────────────────────────
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_ios_new, color: _kGold, size: 20),
+                padding: EdgeInsets.zero,
+              ),
 
-                SignInButton(
-                  Buttons.Google,
-                  onPressed: signUpWithGoogle,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  text: "Sign up with Google",
-                ),
+              const SizedBox(height: 16),
 
-                SizedBox(height: 20),
+              // ── Title ────────────────────────────────────────────
+              const Text('Create account',
+                  style: TextStyle(
+                      color: _kGold,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Lora')),
+              const SizedBox(height: 6),
+              const Text('Join the story — it\'s free',
+                  style: TextStyle(color: _kRose, fontSize: 13)),
 
-                TextField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.6),
-                    labelText: "Email",
-                    labelStyle: TextStyle(color: Colors.white),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: EdgeInsets.all(16),
-                  ),
-                ),
+              const SizedBox(height: 32),
 
-                SizedBox(height: 10),
+              // ── Social sign-up ───────────────────────────────────
+              _SocialBtn(
+                label: 'Sign up with Google',
+                iconWidget: _GoogleG(),
+                bgColor: Colors.white,
+                textColor: const Color(0xFF1A1A1A),
+                onTap: _loading ? null : () => _run(() => _auth.signInWithGoogle(context)),
+              ),
 
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.6),
-                    labelText: "Password",
-                    labelStyle: TextStyle(color: Colors.white),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: EdgeInsets.all(16),
-                  ),
-                ),
-
-                SizedBox(height: 20),
-
-                ElevatedButton(
-                  onPressed: registerWithEmail,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    backgroundColor: Color(0xFF9C7F46),
-                  ),
-                  child: Text('Sign up with Email', style: TextStyle(fontSize: 18, color: Colors.white)),
-                ),
-
-                SizedBox(height: 20),
-
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => LoginScreen()),
-                    );
-                  },
-                  child: Text(
-                    "Already have an account? Login",
-                    style: TextStyle(color: Colors.white),
-                  ),
+              if (_showApple) ...[
+                const SizedBox(height: 12),
+                _SocialBtn(
+                  label: 'Sign up with Apple',
+                  iconWidget: const Icon(Icons.apple, color: Colors.white, size: 22),
+                  bgColor: Colors.black,
+                  textColor: Colors.white,
+                  border: Border.all(color: Colors.white24),
+                  onTap: _loading ? null : () => _run(() => _auth.signInWithApple(context)),
                 ),
               ],
-            ),
+
+              const SizedBox(height: 28),
+              _OrDivider(),
+              const SizedBox(height: 28),
+
+              // ── Email form ───────────────────────────────────────
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    // Name
+                    _Field(
+                      controller: _nameCtrl,
+                      hint: 'Full name',
+                      icon: Icons.person_outline,
+                      textCapitalization: TextCapitalization.words,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Email
+                    _Field(
+                      controller: _emailCtrl,
+                      hint: 'Email address',
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Enter your email';
+                        if (!v.contains('@')) return 'Enter a valid email';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Password
+                    _Field(
+                      controller: _passCtrl,
+                      hint: 'Password',
+                      icon: Icons.lock_outline,
+                      obscureText: !_passVisible,
+                      suffix: _EyeToggle(
+                        visible: _passVisible,
+                        onToggle: () => setState(() => _passVisible = !_passVisible),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Enter a password';
+                        if (v.length < 6) return 'At least 6 characters';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Confirm password
+                    _Field(
+                      controller: _confirmCtrl,
+                      hint: 'Confirm password',
+                      icon: Icons.lock_outline,
+                      obscureText: !_confirmVisible,
+                      suffix: _EyeToggle(
+                        visible: _confirmVisible,
+                        onToggle: () =>
+                            setState(() => _confirmVisible = !_confirmVisible),
+                      ),
+                      validator: (v) =>
+                          v != _passCtrl.text ? 'Passwords do not match' : null,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Create account button ────────────────────────────
+              _PrimaryBtn(
+                label: 'Create Account',
+                loading: _loading,
+                onTap: () async {
+                  if (!_formKey.currentState!.validate()) return;
+                  await _run(() => _auth.signUpWithEmail(
+                        name: _nameCtrl.text,
+                        email: _emailCtrl.text,
+                        password: _passCtrl.text,
+                        context: context,
+                      ));
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Go to login ──────────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Already have an account?  ',
+                      style: TextStyle(color: _kHint, fontSize: 14)),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Text('Sign In',
+                        style: TextStyle(
+                            color: _kGold,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 36),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Private widgets
+// ─────────────────────────────────────────────────────────────────
+
+class _SocialBtn extends StatelessWidget {
+  final String label;
+  final Widget iconWidget;
+  final Color bgColor;
+  final Color textColor;
+  final Border? border;
+  final VoidCallback? onTap;
+
+  const _SocialBtn({
+    required this.label,
+    required this.iconWidget,
+    required this.bgColor,
+    required this.textColor,
+    this.border,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedOpacity(
+        opacity: onTap == null ? 0.45 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        child: Container(
+          width: double.infinity,
+          height: 54,
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(14),
+            border: border,
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3))
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              iconWidget,
+              const SizedBox(width: 12),
+              Text(label,
+                  style: TextStyle(
+                      color: textColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Expanded(child: Divider(color: Colors.white.withOpacity(0.1), thickness: 1)),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14),
+        child: Text('or', style: TextStyle(color: _kHint, fontSize: 13)),
+      ),
+      Expanded(child: Divider(color: Colors.white.withOpacity(0.1), thickness: 1)),
+    ]);
+  }
+}
+
+class _Field extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
+  final bool obscureText;
+  final Widget? suffix;
+  final String? Function(String?)? validator;
+
+  const _Field({
+    required this.controller,
+    required this.hint,
+    required this.icon,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
+    this.obscureText = false,
+    this.suffix,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
+      style: const TextStyle(color: Colors.white, fontSize: 15),
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: _kHint, fontSize: 14),
+        prefixIcon: Icon(icon, color: _kHint, size: 20),
+        suffixIcon: suffix,
+        filled: true,
+        fillColor: _kInput,
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.06))),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: _kGold, width: 1.4)),
+        errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.red.shade700)),
+        focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.red.shade700)),
+      ),
+    );
+  }
+}
+
+class _EyeToggle extends StatelessWidget {
+  final bool visible;
+  final VoidCallback onToggle;
+
+  const _EyeToggle({required this.visible, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(
+        visible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+        color: _kHint,
+        size: 20,
+      ),
+      onPressed: onToggle,
+    );
+  }
+}
+
+class _PrimaryBtn extends StatelessWidget {
+  final String label;
+  final bool loading;
+  final VoidCallback? onTap;
+
+  const _PrimaryBtn({required this.label, required this.loading, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: loading ? null : onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kGold,
+          disabledBackgroundColor: const Color(0xFF7A6520),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 0,
+        ),
+        child: loading
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                    color: Colors.black, strokeWidth: 2.5))
+            : Text(label,
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black)),
+      ),
+    );
+  }
+}
+
+class _GoogleG extends StatelessWidget {
+  const _GoogleG();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(size: const Size(24, 24), painter: _GoogleGPainter());
+  }
+}
+
+class _GoogleGPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2;
+    final rect = Rect.fromCircle(center: c, radius: r);
+    canvas.drawArc(rect, -1.57, 1.57, true, Paint()..color = const Color(0xFF4285F4));
+    canvas.drawArc(rect, -3.14, 1.57, true, Paint()..color = const Color(0xFFEA4335));
+    canvas.drawArc(rect, 3.14, 1.57,  true, Paint()..color = const Color(0xFFFBBC05));
+    canvas.drawArc(rect, 0,    1.57,  true, Paint()..color = const Color(0xFF34A853));
+    canvas.drawCircle(c, r * 0.55, Paint()..color = Colors.white);
+    canvas.drawRect(Rect.fromLTWH(c.dx - 0.5, c.dy - 2, r * 0.45, 4),
+        Paint()..color = const Color(0xFF4285F4));
+    canvas.drawRect(Rect.fromLTWH(c.dx - 0.5, c.dy - 2, 2, r * 0.55),
+        Paint()..color = const Color(0xFF4285F4));
+  }
+
+  @override
+  bool shouldRepaint(_) => false;
 }
