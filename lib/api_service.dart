@@ -8,8 +8,7 @@ class ApiService {
   static Future<List<dynamic>> fetchBooks() async {
     final response = await http.get(Uri.parse(apiUrl));
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return jsonDecode(data); // Because the body is double-encoded
+      return jsonDecode(response.body);
     } else {
       throw Exception('Failed to load books');
     }
