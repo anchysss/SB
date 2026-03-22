@@ -19,6 +19,11 @@ const Color pastelRose = Color(0xFFF4C2C2); // 🌹 Dodata ružičasta nijansa
 const Color goldenAccent = goldColor;
 const Color darkFooterBackground = darkBackground;
 
+// Aliases za backward kompatibilnost
+const Color pastelBlush = pastelBackground;
+const Color pastelTextBrown = textBrown;
+const Color pastelCream = pastelCardColor;
+
 final ThemeData steamyTheme = ThemeData(
   scaffoldBackgroundColor: pastelBackground,
   fontFamily: 'Lora',
