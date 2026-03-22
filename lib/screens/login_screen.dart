@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // Google Sign-In
-import 'home_screen.dart'; // Import HomeScreen
-import 'register_screen.dart'; // Import RegisterScreen
-import 'package:flutter_signin_button/flutter_signin_button.dart'; // Google Sign-In button
+import 'package:google_sign_in/google_sign_in.dart';
+import 'home_screen.dart';
+import 'register_screen.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -20,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Save user to AWS Lambda function
   Future<void> saveUserToDatabase(User user) async {
     Map<String, dynamic> userData = {
       'uid': user.uid,
@@ -29,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
       'photoURL': user.photoURL ?? '',
     };
 
-    final String apiUrl = 'https://poiw4thrb5.execute-api.eu-north-1.amazonaws.com/prod/saveUser'; // API endpoint
+    const String apiUrl = 'https://poiw4thrb5.execute-api.eu-north-1.amazonaws.com/prod/saveUser';
 
     try {
       final response = await http.post(
@@ -48,28 +47,28 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Check if the user exists in the database after login
   Future<void> checkIfUserExists(User user) async {
-    final String apiUrl = 'https://poiw4thrb5.execute-api.eu-north-1.amazonaws.com/prod/checkUser'; // API endpoint for checking user
+    const String apiUrl = 'https://poiw4thrb5.execute-api.eu-north-1.amazonaws.com/prod/checkUser';
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'uid': user.uid}), // Send the UID to check if the user exists
+        body: json.encode({'uid': user.uid}),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
-        // If the user exists in the database
         print("User exists in database!");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomeScreen()),
         );
       } else {
-        // If the user doesn't exist in the database
         print("User does not exist in the database.");
-        await saveUserToDatabase(user); // Save the new user to the database
+        await saveUserToDatabase(user);
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -80,11 +79,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Sign in with Google
   Future<void> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;  // User canceled the login
+      if (googleUser == null) return;
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
@@ -92,19 +90,17 @@ class _LoginScreenState extends State<LoginScreen> {
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = await _auth.signInWithCredential(credential); // Login
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
 
       if (user != null) {
-        // Check if the user already exists in the database
-        await checkIfUserExists(user); // Check for user in DB
+        await checkIfUserExists(user);
       }
     } catch (e) {
       print('Login failed: $e');
     }
   }
 
-  // Sign in with email and password
   Future<void> signInWithEmail() async {
     try {
       final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
@@ -114,22 +110,21 @@ class _LoginScreenState extends State<LoginScreen> {
       final User? user = userCredential.user;
 
       if (user != null) {
-        // Check if the user already exists in the database
-        await checkIfUserExists(user); // Check for user in DB
+        await checkIfUserExists(user);
       }
     } catch (e) {
       print('Login failed: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Login failed. Please try again.')),
       );
     }
   }
 
-  // Check if user is already signed in silently
   Future<void> checkSignedInUser() async {
     final User? user = _auth.currentUser;
     if (user != null) {
-      // If the user is already logged in, go to HomeScreen
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -137,24 +132,23 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Go to Register Screen
   void goToRegisterScreen() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => RegisterScreen()),  // Navigate to RegisterScreen
+      MaterialPageRoute(builder: (context) => RegisterScreen()),
     );
   }
 
   @override
   void initState() {
     super.initState();
-    checkSignedInUser(); // Check if user is already signed in silently
+    checkSignedInUser();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF4B3C2A), // Dark gold background
+      backgroundColor: Color(0xFF4B3C2A),
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -162,24 +156,21 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
                 Image.asset('assets/logo.png', height: 120),
 
                 SizedBox(height: 40),
 
-                // Render Google Sign In Button
                 SignInButton(
                   Buttons.Google,
                   onPressed: signInWithGoogle,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  text: "Sign in with Google",  // Correct text for LoginScreen
+                  text: "Sign in with Google",
                 ),
 
                 SizedBox(height: 20),
 
-                // Email/Password Login
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
@@ -222,14 +213,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    backgroundColor: Color(0xFF9C7F46), // Golden color
+                    backgroundColor: Color(0xFF9C7F46),
                   ),
                   child: Text('Sign in with Email', style: TextStyle(fontSize: 18, color: Colors.white)),
                 ),
 
                 SizedBox(height: 20),
 
-                // Register link
                 GestureDetector(
                   onTap: goToRegisterScreen,
                   child: Text(
