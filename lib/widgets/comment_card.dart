@@ -58,7 +58,7 @@ class CommentCard extends StatelessWidget {
 
           if (isEditing)
             TextField(
-              controller: editController..text = comment['comment_text'],
+              controller: editController,
               decoration: InputDecoration(
                 hintText: 'Edit comment...',
                 suffixIcon: IconButton(
