@@ -4,11 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'aws_users_service.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseAuth      _auth        = FirebaseAuth.instance;
+  final FirebaseFirestore _db          = FirebaseFirestore.instance;
+  final GoogleSignIn      _googleSignIn = GoogleSignIn();
+  final AWSUsersService   _aws         = AWSUsersService();
 
   // ── Email sign-up ─────────────────────────────────────────────
   Future<void> signUpWithEmail({
@@ -25,11 +27,11 @@ class AuthService {
       final user = cred.user;
       if (user != null) {
         await user.updateDisplayName(name.trim());
-        await _saveUserToFirestore(user, name: name.trim());
+        await _saveUser(user, name: name.trim());
         if (context.mounted) Navigator.pushReplacementNamed(context, '/home');
       }
     } on FirebaseAuthException catch (e) {
-      if (context.mounted) _showError(context, e.message ?? 'Sign-up failed.');
+      if (context.mounted) _showError(context, _authError(e));
     }
   }
 
@@ -48,18 +50,13 @@ class AuthService {
         Navigator.pushReplacementNamed(context, '/home');
       }
     } on FirebaseAuthException catch (e) {
-      if (!context.mounted) return;
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        _showError(context, 'Invalid email or password. Please try again.');
-      } else {
-        _showError(context, e.message ?? 'Sign-in failed.');
-      }
+      if (context.mounted) _showError(context, _authError(e));
     }
   }
 
   // ── Google sign-in ────────────────────────────────────────────
   Future<void> signInWithGoogle(BuildContext context) async {
-    if (kIsWeb) return; // web uses GIS — handled separately
+    if (kIsWeb) return;
     try {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return;
@@ -73,7 +70,7 @@ class AuthService {
       final userCred = await _auth.signInWithCredential(credential);
       final user = userCred.user;
       if (user != null) {
-        await _saveUserToFirestore(user);
+        await _saveUser(user);
         if (context.mounted) Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
@@ -98,12 +95,11 @@ class AuthService {
 
       final userCred = await _auth.signInWithCredential(oauthCredential);
       final user = userCred.user;
-
       if (user != null) {
         final name = [appleCredential.givenName, appleCredential.familyName]
             .where((p) => p != null && p.isNotEmpty)
             .join(' ');
-        await _saveUserToFirestore(user, name: name.isNotEmpty ? name : null);
+        await _saveUser(user, name: name.isNotEmpty ? name : null);
         if (context.mounted) Navigator.pushReplacementNamed(context, '/home');
       }
     } on SignInWithAppleAuthorizationException catch (e) {
@@ -137,20 +133,63 @@ class AuthService {
     await _googleSignIn.signOut();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────
-  Future<void> _saveUserToFirestore(User user, {String? name}) async {
+  // ─────────────────────────────────────────────────────────────
+  //  Core: save new user to BOTH Firestore and AWS DynamoDB
+  //
+  //  • Firestore  → real-time profile (progress, coins, comments)
+  //  • DynamoDB   → user catalogue, analytics, cross-service data
+  //
+  //  Only saves if the user doesn't exist yet (first sign-in).
+  //  AWS failure is non-critical — user is still registered.
+  // ─────────────────────────────────────────────────────────────
+  Future<void> _saveUser(User user, {String? name}) async {
+    final resolvedName = name ?? user.displayName ?? 'Reader';
+    final email        = user.email ?? '';
+    final photoUrl     = user.photoURL ?? '';
+
+    // 1️⃣  Firestore — skip if already exists
     final doc = await _db.collection('Users').doc(user.uid).get();
     if (!doc.exists) {
       await _db.collection('Users').doc(user.uid).set({
-        'uid': user.uid,
-        'email': user.email ?? '',
-        'name': name ?? user.displayName ?? 'Reader',
-        'created_at': FieldValue.serverTimestamp(),
-        'steamy_clicks': 0,
-        'progress': {},
-        'purchases': [],
-        'preferred_genres': [],
+        'uid':               user.uid,
+        'email':             email,
+        'name':              resolvedName,
+        'photo_url':         photoUrl,
+        'created_at':        FieldValue.serverTimestamp(),
+        'steamy_clicks':     0,
+        'progress':          {},   // { book_id: last_chapter_number }
+        'purchases':         [],   // [ chapter_id, ... ]
+        'preferred_genres':  [],
+        'coins':             0,
       });
+      print('✅ Firestore: user saved (${user.uid})');
+
+      // 2️⃣  AWS DynamoDB — fire-and-forget, non-critical
+      _aws.saveUserData(user.uid, email, resolvedName, photoUrl).catchError((e) {
+        print('⚠️  AWS DynamoDB save failed (non-critical): $e');
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Helpers
+  // ─────────────────────────────────────────────────────────────
+  String _authError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Invalid email or password.';
+      case 'email-already-in-use':
+        return 'An account with this email already exists.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      case 'invalid-email':
+        return 'Invalid email address.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      default:
+        return e.message ?? 'Something went wrong.';
     }
   }
 
