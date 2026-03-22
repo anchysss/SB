@@ -51,11 +51,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
         } else {
           setState(() => isLoading = false);
         }
-      } catch (e) {
-        print('Error fetching chapter: $e');
-        setState(() => isLoading = false);
       }
+    } catch (e) {
+      print('Error fetching chapter: $e');
+      setState(() => isLoading = false);
     }
+  }
 
   Future<void> fetchComments() async {
     // MOCK DATA for now
@@ -73,7 +74,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         {
           'id': 2,
           'user': 'AnaSt',
-          'text': 'Can’t wait for the next one!',
+          'text': "Can't wait for the next one!",
           'likes': 1,
           'isOwn': true,
           'replies': [
@@ -225,7 +226,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
               Text("${comment['likes']}"),
               const SizedBox(width: 12),
               TextButton(
-                onPressed: () {}, // Add reply logic
+                onPressed: () {},
                 child: const Text("Reply"),
               ),
               if (comment['isOwn'])
