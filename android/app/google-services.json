@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "509474815476",
+    "project_id": "steamy-book",
+    "storage_bucket": "steamy-book.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:509474815476:android:9c74b26fa94dc436018da1",
+        "android_client_info": {
+          "package_name": "com.example.steamy_book"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "509474815476-r0b4jkmh4d07qsvuboksht9bbcf1he99.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1qdWRNv6w4BKSk_yyB65mfuZbLiWuup4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "509474815476-r0b4jkmh4d07qsvuboksht9bbcf1he99.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "509474815476-6h6j5s2go6grhm6jgaaubeiaqe09nvsp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.steamyBook"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:509474815476:android:53559bd3a6381aae018da1",
+        "android_client_info": {
+          "package_name": "com.steamybook.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "509474815476-r0b4jkmh4d07qsvuboksht9bbcf1he99.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1qdWRNv6w4BKSk_yyB65mfuZbLiWuup4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "509474815476-r0b4jkmh4d07qsvuboksht9bbcf1he99.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "509474815476-6h6j5s2go6grhm6jgaaubeiaqe09nvsp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.steamyBook"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

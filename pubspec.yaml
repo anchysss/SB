@@ -1,0 +1,51 @@
+name: steamy_book
+description: Steamy Book aplikacija sa Firebase prijavom i Google/Apple registracijom
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: '^3.7.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase dependencies
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.2
+
+  # Google Sign-In dependencies
+  google_sign_in: ^6.3.0
+  google_sign_in_web: ^0.12.4+4  # Added for web support
+
+  # Apple Sign-In for iOS
+  sign_in_with_apple: ^3.0.0
+
+  # Sign-In button for Google and Apple
+  flutter_signin_button: ^2.0.0
+
+  # UI and other dependencies
+  cupertino_icons: ^1.0.6
+  flutter_svg: ^2.0.9
+  http: ^1.1.2
+  provider: ^6.1.2
+  shared_preferences: ^2.2.2
+  animated_text_kit: ^4.2.2
+
+  # For handling cross-platform compatibility
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png
+    - assets/logo_s.png
+    - assets/book_placeholder.png
+    - assets/steamy_s_animated.gif
+    - assets/backgrounds/login_gold_final.png
+    - assets/icons/

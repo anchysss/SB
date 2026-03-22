@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base href="$FLUTTER_BASE_HREF">
+    <meta charset="UTF-8">
+    <meta name="description" content="Steamy Book - Read romance novels with steamy rewards.">
+    <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google Sign-In Client ID -->
+    <meta name="google-signin-client_id" content="509474815476-r0b4jkmh4d07qsvuboksht9bbcf1he99.apps.googleusercontent.com">
+
+    <!-- iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Steamy Book">
+    <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+    <!-- Fav -->
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="manifest" href="manifest.json">
+
+    <title>Steamy Book</title>
+
+    <!-- ✅ Google Identity Services SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- ✅ Firebase SDK -->
+    <script type="module">
+      // Import necessary functions from Firebase SDK
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
+
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyDzxQqzw3eEyZBwlRbZRIAwRn3PPo66gU8",
+        authDomain: "steamy-book.firebaseapp.com",
+        projectId: "steamy-book",
+        storageBucket: "steamy-book.firebasestorage.app",
+        messagingSenderId: "509474815476",
+        appId: "1:509474815476:web:11604ac88fe2534a018da1",
+        measurementId: "G-LS1M88EDH8"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const analytics = getAnalytics(app);
+    </script>
+
+    <!-- ✅ Flutter bootstrap -->
+    <script src="flutter_bootstrap.js" async defer></script>
+
+    <!-- Initialize Google API client (gapi) -->
+    <script>
+      let gapiLoaded = false;
+
+      // Function to load gapi client
+      function initGapi() {
+        gapi.load('client:auth2', function() {
+          gapi.client.init({
+            clientId: '509474815476-r0b4jkmh4d07qsvuboksht9bbcf1he99.apps.googleusercontent.com',
+            scope: 'email profile',
+          }).then(function() {
+            gapiLoaded = true;
+            console.log("gapi.client initialized");
+          }).catch(function(error) {
+            console.log("Error initializing gapi.client:", error);
+          });
+        });
+      }
+
+      // Initialize gapi when the window loads
+      window.onload = initGapi;
+    </script>
+
+  </head>
+
+  <body>
+    <!-- ✅ Google Sign-In config (One Tap) -->
+    <div
+      id="g_id_onload"
+      data-client_id="509474815476-r0b4jkmh4d07qsvuboksht9bbcf1he99.apps.googleusercontent.com"
+      data-context="signin"
+      data-ux_mode="popup"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+
+    <div
+      class="g_id_signin"
+      data-type="standard"
+      data-shape="rectangular"
+      data-theme="filled_black"
+      data-text="continue_with"
+      data-size="large"
+      data-logo_alignment="left"
+      style="display: flex; justify-content: center; margin-top: 20px;">
+    </div>
+
+    <!-- ✅ Callback for Flutter -->
+    <script>
+      window.handleCredentialResponse = function (response) {
+        if (gapiLoaded) {
+          const idToken = response.credential;
+          window.postMessage({ idToken }, "*");
+        } else {
+          console.log("gapi.client is not loaded yet.");
+        }
+      };
+    </script>
+  </body>
+</html>
