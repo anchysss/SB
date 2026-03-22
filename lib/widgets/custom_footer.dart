@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 
 class CustomFooter extends StatelessWidget {
+  const CustomFooter({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 6),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: darkFooterBackground,
           boxShadow: [
             BoxShadow(
@@ -18,9 +20,9 @@ class CustomFooter extends StatelessWidget {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
+          children: const [
             _FooterIcon(icon: Icons.home, label: 'Home'),
-            _FooterIcon(icon: Icons.card_giftcard, label: 'Gifts'), // ili Wards
+            _FooterIcon(icon: Icons.card_giftcard, label: 'Gifts'),
             _FooterIcon(icon: Icons.bookmark, label: 'My Library'),
           ],
         ),
@@ -38,13 +40,13 @@ class _FooterIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisSize: MainAxisSize.min, // sprečava overflow
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: goldenAccent, size: 26),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             color: goldenAccent,
             fontSize: 12,
             fontWeight: FontWeight.w500,
