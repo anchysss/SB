@@ -41,12 +41,17 @@ export const getPendingBooks = () => callApi('getPendingBooks')
 export const approveBook = (book_id, approved) =>
   callApi('approveBook', { book_id, approved })
 
+// Activate or deactivate a book (inactive = hidden in mobile app)
+export const setBookActive = (book_id, active) =>
+  callApi('setBookActive', { book_id, active })
+
 // Map frontend-friendly names → Lambda field names
 function mapBookPayload(form, chapters) {
   return {
     book_name: form.title,
     author_name: form.author,
-    genre: form.category ? [form.category] : [],
+    // genres is now an array (multi-select checkboxes)
+    genre: Array.isArray(form.genres) ? form.genres : (form.category ? [form.category] : []),
     short_summary: form.description,
     cover_image_url: form.cover_url,
     tags: Array.isArray(form.tags) ? form.tags : (form.tags || '').split(',').map((t) => t.trim()).filter(Boolean),
@@ -71,6 +76,12 @@ export const submitBook = (form, chapters) =>
 // updateChapter uses Lambda field names directly:
 // { book_id, chapter_number, chapter_title?, price_to_unlock?, timer_seconds?, reward_ads_count? }
 export const updateChapter = (payload) => callApi('updateChapter', payload)
+export const updateBook = (payload) => callApi('updateBook', payload)
+export const getBookChapters = (book_id) => callApi('getBookChapters', { book_id })
+export const addChapters = (book_id, chapters) => callApi('addChapters', { book_id, chapters })
+export const deleteChapter = (book_id, chapter_number) => callApi('deleteChapter', { book_id, chapter_number })
+export const deleteBook = (book_id) => callApi('deleteBook', { book_id })
+export const reprocessBookChapters = (book_id) => callApi('reprocessBookChapters', { book_id })
 export const getWriterBooks = (writer_id) => callApi('getWriterBooks', { writer_id })
 
 // ─── Earnings ────────────────────────────────────────────────────────────────
@@ -103,11 +114,13 @@ export async function getPresignedUrl(filename, content_type, folder) {
 }
 
 export async function uploadFile(file, folder) {
-  const { upload_url, s3_url, key } = await getPresignedUrl(file.name, file.type, folder)
-  await fetch(upload_url, {
+  const contentType = file.type || 'application/octet-stream'
+  const { upload_url, s3_url, key } = await getPresignedUrl(file.name, contentType, folder)
+  const putRes = await fetch(upload_url, {
     method: 'PUT',
-    headers: { 'Content-Type': file.type },
+    headers: { 'Content-Type': contentType },
     body: file,
   })
+  if (!putRes.ok) throw new Error(`File upload failed (${putRes.status}). Please try again.`)
   return { s3_url, key }
 }
